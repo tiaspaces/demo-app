@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Container Info</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css">
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet"> <!-- Add this line -->
+    </head>
+<body>
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <!-- Left Panel for Charts -->
+                <div class="column is-one-third">
+                    {% if name %}
+                    <div class="notification is-primary has-text-centered">
+                        <p class="title is-4">Welcome, <span style="color: #FFDB58;">{{ name }}</span>! Get Ready to Transform Your Ideas with <span style="color: #FFDB58;">Tiaspaces.</span></p>
+                    </div>
+                    
+                    
+                    <h2 class="subtitle has-text-centered">Your Container Info</h2>
+                    <div class="content has-text-centered">
+                        <p>IP Address: {{ ip_address }}</p>
+                    </div>
+                    <div class="content canvas-container">
+                        <canvas id="cpuChart" width="200" height="200"></canvas>
+                    </div>
+                    <div class="content canvas-container">
+                        <canvas id="cpuHistoryChart" width="200" height="200"></canvas>
+                    </div>
+                    <div class="content canvas-container">
+                        <canvas id="memoryChart" width="200" height="200"></canvas>
+                    </div>
+                    <div class="content canvas-container">
+                        <canvas id="networkChart" width="200" height="200"></canvas>
+                    </div>
+
+                    <div class="content canvas-container">
+                        <canvas id="radarChart" width="200" height="200"></canvas>
+                    </div>
+                    {% endif %}
+                </div>
+                <!-- Right Panel for Web Browser -->
+                <div class="column is-two-thirds">
+                    <iframe id="webBrowser" src="https://tialabs-landingpage.tiapod.tiacloud.dev/" width="100%" height="1000px" frameborder="0"></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='chart.js') }}"></script>
+    <script>
+        // Function to update the CPU chart
+        function updateBubbleChart(chart, data) {
+            chart.data.datasets[0].data = data;
+            chart.update();
+        }
+
+        // Function to update the memory chart
+        function updateBubbleChart(chart, data) {
+            chart.data.datasets[0].data = data;
+            chart.update();
+        }
+
+        // Function to update the network chart
+        function updateBarChart(chart, data) {
+            chart.data.labels = Object.keys(data);
+            chart.data.datasets[0].data = Object.values(data);
+            chart.update();
+        }
+
+        // Function to update the radar chart
+        function updateRadarChart(chart, data) {
+            chart.data.datasets[0].data = data;
+            chart.update();
+        }
+
+        // Initialize the charts
+        const cpuChartCtx = document.getElementById('cpuChart').getContext('2d');
+        const memoryChartCtx = document.getElementById('memoryChart').getContext('2d');
+        const networkChartCtx = document.getElementById('networkChart').getContext('2d');
+        const cpuHistoryChartCtx = document.getElementById('cpuHistoryChart').getContext('2d');
+        const radarChartCtx = document.getElementById('radarChart').getContext('2d');
+
+        const cpuChart = new Chart(cpuChartCtx, {
+            type: 'bubble',
+            data: { datasets: [{ label: 'CPU Usage', data: [] }] },
+            options: { responsive: true }
+        });
+
+        const memoryChart = new Chart(memoryChartCtx, {
+            type: 'bubble',
+            data: { datasets: [{ label: 'Memory Usage', data: [] }] },
+            options: { responsive: true }
+        });
+
+        const networkChart = new Chart(networkChartCtx, {
+            type: 'bar',
+            data: { labels: [], datasets: [{ label: 'Network Stats', data: [] }] },
+            options: { responsive: true }
+        });
+
+        const cpuHistoryChart = new Chart(cpuHistoryChartCtx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'CPU History', data: [] }] },
+            options: { responsive: true }
+        });
+
+        const radarChart = new Chart(radarChartCtx, {
+            type: 'radar',
+            data: { labels: ['CPU Usage', 'Memory Usage', 'Bytes Sent', 'Bytes Received'], datasets: [{ label: 'System Metrics', data: [] }] },
+            options: { responsive: true }
+        });
+
+        // Function to update all charts
+        function updateCharts(data) {
+            updateBubbleChart(cpuChart, [{ x: 1, y: data.cpu_usage, r: 10 }]);
+            updateBubbleChart(memoryChart, [{ x: 1, y: data.memory_usage, r: 10 }]);
+            updateBarChart(networkChart, data.net_stats);
+            updateRadarChart(radarChart, [data.cpu_usage, data.memory_usage, data.net_stats.bytes_sent, data.net_stats.bytes_recv]);
+        }
+
+        // Function to fetch system info
+        function fetchSystemInfo() {
+            fetch('/system_info')
+                .then(response => response.json())
+                .then(data => updateCharts(data));
+        }
+
+        // Function to fetch CPU history
+        function fetchCpuHistory() {
+            fetch('/cpu_history')
+                .then(response => response.json())
+                .then(data => {
+                    cpuHistoryChart.data.labels = Array.from({ length: data.length }, (_, i) => i + 1);
+                    cpuHistoryChart.data.datasets[0].data = data;
+                    cpuHistoryChart.update();
+                });
+        }
+
+        // Fetch data initially and set interval for periodic updates
+        fetchCpuHistory();
+        fetchSystemInfo();
+        setInterval(fetchSystemInfo, 5000); // Fetch data every 5 seconds
+        setInterval(fetchCpuHistory, 5000); // Fetch CPU history every 5 seconds
+    </script>
+</body>
+</html>
